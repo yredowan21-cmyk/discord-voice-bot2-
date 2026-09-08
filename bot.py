@@ -8,7 +8,7 @@ load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
 if not TOKEN:
-    raise RuntimeError("DISCORD_TOKEN is missing. Put your bot token in the .env file.")
+    raise RuntimeError("DISCORD_TOKEN is missing.")
 
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -24,12 +24,16 @@ async def on_ready():
 @bot.tree.command(name="join", description="Join a voice channel")
 @app_commands.describe(channel="Choose the voice channel to join")
 async def join(interaction: discord.Interaction, channel: discord.VoiceChannel):
+
     if interaction.guild is None:
         await interaction.response.send_message(
             "This command can only be used inside a server.",
-            ephemeral=True,
+            ephemeral=True
         )
         return
+
+    # Tell Discord we are working before connecting
+    await interaction.response.defer()
 
     try:
         voice = interaction.guild.voice_client
@@ -39,28 +43,29 @@ async def join(interaction: discord.Interaction, channel: discord.VoiceChannel):
         else:
             await channel.connect()
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"🔊 Joined **{channel.name}**"
         )
 
     except discord.Forbidden:
-        await interaction.response.send_message(
-            "❌ I need Connect/Speak permission for that voice channel.",
-            ephemeral=True,
+        await interaction.followup.send(
+            "❌ I don't have permission to connect to that voice channel."
         )
-    except discord.HTTPException:
-        await interaction.response.send_message(
-            "❌ Discord returned an error while connecting.",
-            ephemeral=True,
+
+    except Exception as e:
+        print(f"Join error: {e}")
+        await interaction.followup.send(
+            "❌ Could not join the voice channel."
         )
 
 
-@bot.tree.command(name="leave", description="Leave the current voice channel")
+@bot.tree.command(name="leave", description="Leave the voice channel")
 async def leave(interaction: discord.Interaction):
+
     if interaction.guild is None:
         await interaction.response.send_message(
             "This command can only be used inside a server.",
-            ephemeral=True,
+            ephemeral=True
         )
         return
 
@@ -69,12 +74,15 @@ async def leave(interaction: discord.Interaction):
     if voice is None:
         await interaction.response.send_message(
             "ℹ️ I'm not currently in a voice channel.",
-            ephemeral=True,
+            ephemeral=True
         )
         return
 
     await voice.disconnect()
-    await interaction.response.send_message("👋 Left the voice channel.")
+
+    await interaction.response.send_message(
+        "👋 Left the voice channel."
+    )
 
 
 bot.run(TOKEN)
